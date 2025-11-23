@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Freelancer Productivity Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .section-title {
+            color: #3b82f6;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 0.5rem;
+        }
+        .btn {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .task-item:last-child {
+            border-bottom: none;
+        }
+        .task-checkbox {
+            margin-right: 0.75rem;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #9ca3af;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s, border-color 0.2s;
+            position: relative;
+        }
+        .task-checkbox:checked {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .task-checkbox:checked::before {
+            content: '\u2713';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.75rem;
+            line-height: 1;
+        }
+        .task-text {
+            flex-grow: 1;
+        }
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1.25rem;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover {
+            color: #dc2626;
+        }
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .expense-item:last-child {
+            border-bottom: none;
+        }
+        .income {
+            color: #10b981;
+        }
+        .expense {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="container mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-2">Freelancer's Hub</h1>
+            <p class="text-lg text-gray-600">Time and Budget Management for Success</p>
+        </header>
+
+        <!-- Time Management Section -->
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <section id="time-management" class="card p-6">
+                <h2 class="section-title text-2xl font-bold mb-4">Time Management</h2>
+                <div class="mb-4 flex items-center gap-2">
+                    <input type="text" id="task-input" placeholder="Add a new task..." class="flex-grow p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="add-task-btn" class="btn">Add</button>
+                </div>
+                <div id="task-list">
+                    <!-- Tasks will be injected here by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Budget Management Section -->
+            <section id="budget-management" class="card p-6">
+                <h2 class="section-title text-2xl font-bold mb-4">Budget Management</h2>
+                <div class="mb-4 space-y-2">
+                    <input type="text" id="item-description" placeholder="Description (e.g., Project A, Software...)" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="number" id="item-amount" placeholder="Amount ($)" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="flex gap-2">
+                        <button id="add-income-btn" class="btn w-1/2">Add Income</button>
+                        <button id="add-expense-btn" class="btn w-1/2 bg-red-500 hover:bg-red-600">Add Expense</button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div id="budget-summary" class="bg-gray-100 p-4 rounded-lg">
+                        <p class="font-semibold text-lg">Total Income: <span id="total-income" class="text-green-500">$0.00</span></p>
+                        <p class="font-semibold text-lg">Total Expenses: <span id="total-expenses" class="text-red-500">$0.00</span></p>
+                        <p class="font-bold text-xl mt-2">Net Balance: <span id="net-balance">$0.00</span></p>
+                    </div>
+                    <div id="transaction-list">
+                        <!-- Transactions will be injected here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Tips & Tricks Section -->
+        <section id="tips-section" class="card p-6">
+            <h2 class="section-title text-2xl font-bold mb-4">Tips & Tricks for Freelancers</h2>
+            <div id="tip-display" class="bg-gray-100 p-4 rounded-lg text-center text-lg italic text-gray-700">
+                <!-- Tips will be loaded here -->
+            </div>
+            <div class="flex justify-center mt-4">
+                <button id="next-tip-btn" class="btn">Next Tip</button>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const taskIdCounter = localStorage.getItem('taskIdCounter') ? parseInt(localStorage.getItem('taskIdCounter')) : 0;
+            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+            // DOM elements
+            const taskInput = document.getElementById('task-input');
+            const addTaskBtn = document.getElementById('add-task-btn');
+            const taskList = document.getElementById('task-list');
+
+            const itemDescriptionInput = document.getElementById('item-description');
+            const itemAmountInput = document.getElementById('item-amount');
+            const addIncomeBtn = document.getElementById('add-income-btn');
+            const addExpenseBtn = document.getElementById('add-expense-btn');
+            const totalIncomeSpan = document.getElementById('total-income');
+            const totalExpensesSpan = document.getElementById('total-expenses');
+            const netBalanceSpan = document.getElementById('net-balance');
+            const transactionList = document.getElementById('transaction-list');
+
+            const tipDisplay = document.getElementById('tip-display');
+            const nextTipBtn = document.getElementById('next-tip-btn');
+            let currentTipIndex = 0;
+
+            const tips = [
+                "Time-blocking is your friend! Schedule specific blocks for deep work, emails, and breaks.",
+                "Track your time on different projects to see where you're really spending your hours.",
+                "Don't be afraid to say no to projects that don't fit your budget or skill set.",
+                "Set aside a percentage of every payment for taxes and savings. Future you will thank you!",
+                "Automate your recurring expenses and use financial software to simplify budgeting.",
+                "Regularly review your rates to ensure they reflect your experience and market value.",
+                "Separate your personal and business finances to simplify tax season and budgeting.",
+                "Remember to take breaks! Rest is just as important as productivity for avoiding burnout."
+            ];
+
+            // Helper function to save data to localStorage
+            const saveData = () => {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+                localStorage.setItem('taskIdCounter', taskIdCounter);
+            };
+
+            // --- Time Management Functions ---
+            const renderTasks = () => {
+                taskList.innerHTML = '';
+                if (tasks.length === 0) {
+                    taskList.innerHTML = '<p class="text-gray-500 text-center py-4">No tasks yet. Get started!</p>';
+                    return;
+                }
+                tasks.forEach(task => {
+                    const taskItem = document.createElement('div');
+                    taskItem.className = `task-item ${task.completed ? 'completed' : ''}`;
+                    taskItem.innerHTML = `
+                        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} data-id="${task.id}">
+                        <span class="task-text">${task.text}</span>
+                        <button class="delete-btn" data-id="${task.id}">&times;</button>
+                    `;
+                    taskList.appendChild(taskItem);
+                });
+            };
+
+            const addTask = () => {
+                const text = taskInput.value.trim();
+                if (text) {
+                    tasks.push({ id: Date.now(), text, completed: false });
+                    taskInput.value = '';
+                    saveData();
+                    renderTasks();
+                }
+            };
+
+            const toggleTaskCompletion = (e) => {
+                const id = parseInt(e.target.dataset.id);
+                tasks = tasks.map(task => 
+                    task.id === id ? { ...task, completed: !task.completed } : task
+                );
+                saveData();
+                renderTasks();
+            };
+
+            const deleteTask = (e) => {
+                const id = parseInt(e.target.dataset.id);
+                tasks = tasks.filter(task => task.id !== id);
+                saveData();
+                renderTasks();
+            };
+
+            // --- Budget Management Functions ---
+            const renderBudget = () => {
+                let totalIncome = 0;
+                let totalExpenses = 0;
+                transactionList.innerHTML = '';
+                
+                if (transactions.length === 0) {
+                    transactionList.innerHTML = '<p class="text-gray-500 text-center py-4">No transactions yet.</p>';
+                }
+
+                transactions.forEach(transaction => {
+                    if (transaction.type === 'income') {
+                        totalIncome += transaction.amount;
+                    } else {
+                        totalExpenses += transaction.amount;
+                    }
+
+                    const transactionItem = document.createElement('div');
+                    transactionItem.className = `expense-item`;
+                    transactionItem.innerHTML = `
+                        <div class="flex-grow">
+                            <div class="font-medium">${transaction.description}</div>
+                            <div class="text-sm text-gray-500">${new Date(transaction.id).toLocaleDateString()}</div>
+                        </div>
+                        <div class="${transaction.type}">${transaction.type === 'income' ? '+' : '-'}$${transaction.amount.toFixed(2)}</div>
+                    `;
+                    transactionList.prepend(transactionItem);
+                });
+
+                const netBalance = totalIncome - totalExpenses;
+                totalIncomeSpan.textContent = `$${totalIncome.toFixed(2)}`;
+                totalExpensesSpan.textContent = `$${totalExpenses.toFixed(2)}`;
+                netBalanceSpan.textContent = `$${netBalance.toFixed(2)}`;
+                netBalanceSpan.className = `font-bold text-xl mt-2 ${netBalance >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            };
+
+            const addTransaction = (type) => {
+                const description = itemDescriptionInput.value.trim();
+                const amount = parseFloat(itemAmountInput.value);
+
+                if (description && amount && !isNaN(amount)) {
+                    transactions.push({ id: Date.now(), description, amount, type });
+                    itemDescriptionInput.value = '';
+                    itemAmountInput.value = '';
+                    saveData();
+                    renderBudget();
+                }
+            };
+
+            // --- Tips & Tricks Functions ---
+            const showTip = () => {
+                tipDisplay.textContent = tips[currentTipIndex];
+            };
+
+            const nextTip = () => {
+                currentTipIndex = (currentTipIndex + 1) % tips.length;
+                showTip();
+            };
+
+            // Event Listeners
+            addTaskBtn.addEventListener('click', addTask);
+            taskInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addTask();
+                }
+            });
+            taskList.addEventListener('click', (e) => {
+                if (e.target.classList.contains('task-checkbox')) {
+                    toggleTaskCompletion(e);
+                } else if (e.target.classList.contains('delete-btn')) {
+                    deleteTask(e);
+                }
+            });
+
+            addIncomeBtn.addEventListener('click', () => addTransaction('income'));
+            addExpenseBtn.addEventListener('click', () => addTransaction('expense'));
+
+            nextTipBtn.addEventListener('click', nextTip);
+
+            // Initial render
+            renderTasks();
+            renderBudget();
+            showTip();
+        });
+    </script>
+</body>
+</html>

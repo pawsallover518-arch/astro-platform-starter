@@ -1,0 +1,232 @@
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, query } from 'firebase/firestore';
+
+// Define Firebase and app-specific variables.
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+// The main application component.
+const App = () => {
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [projectToDeleteId, setProjectToDeleteId] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Check if firebaseConfig is not empty before initializing
+    if (Object.keys(firebaseConfig).length > 0) {
+      const app = initializeApp(firebaseConfig);
+      const firestore = getFirestore(app);
+      const firebaseAuth = getAuth(app);
+      setDb(firestore);
+      setAuth(firebaseAuth);
+
+      // Sign in with custom token or anonymously
+      const signIn = async () => {
+        try {
+          if (initialAuthToken) {
+            await signInWithCustomToken(firebaseAuth, initialAuthToken);
+          } else {
+            await signInAnonymously(firebaseAuth);
+          }
+        } catch (err) {
+          console.error("Firebase Auth Error:", err);
+          setError("Failed to authenticate with Firebase.");
+        }
+      };
+
+      signIn();
+
+      const unsubscribeAuth = firebaseAuth.onAuthStateChanged((user) => {
+        if (user) {
+          setUserId(user.uid);
+          setError(null);
+        } else {
+          setUserId(null);
+          setLoading(false);
+          setError("User not authenticated.");
+        }
+      });
+
+      // Cleanup subscription on component unmount
+      return () => unsubscribeAuth();
+    } else {
+      setLoading(false);
+      setError("Firebase config not available.");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (db && userId) {
+      try {
+        const projectsColRef = collection(db, `artifacts/${appId}/users/${userId}/projects`);
+        const q = query(projectsColRef);
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          const fetchedProjects = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setProjects(fetchedProjects);
+          setLoading(false);
+          setError(null);
+        }, (err) => {
+          console.error("Firestore onSnapshot Error:", err);
+          setError("Failed to fetch projects. Please check your network connection.");
+          setLoading(false);
+        });
+
+        // Cleanup subscription on unmount or when dependencies change
+        return () => unsubscribe();
+      } catch (err) {
+        console.error("Firestore Error:", err);
+        setError("An error occurred while setting up the database listener.");
+        setLoading(false);
+      }
+    }
+  }, [db, userId]);
+
+  const handleAddProject = async (e) => {
+    e.preventDefault();
+    if (!newProjectName.trim() || !db || !userId) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const projectsColRef = collection(db, `artifacts/${appId}/users/${userId}/projects`);
+      await addDoc(projectsColRef, {
+        name: newProjectName.trim(),
+        createdAt: new Date()
+      });
+      setNewProjectName('');
+      setError(null);
+    } catch (err) {
+      console.error("Error adding document: ", err);
+      setError("Failed to add project. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startDeleteProject = (projectId) => {
+    setProjectToDeleteId(projectId);
+    setShowDeleteConfirm(true);
+  };
+
+  const cancelDeleteProject = () => {
+    setShowDeleteConfirm(false);
+    setProjectToDeleteId(null);
+  };
+
+  const confirmDeleteProject = async () => {
+    if (!projectToDeleteId || !db || !userId) {
+      cancelDeleteProject();
+      return;
+    }
+    setLoading(true);
+    try {
+      await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/projects`, projectToDeleteId));
+      setError(null);
+    } catch (err) {
+      console.error("Error deleting document: ", err);
+      setError("Failed to delete project. Please try again.");
+    } finally {
+      setLoading(false);
+      cancelDeleteProject();
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
+        <div className="flex justify-between items-start mb-4">
+          <h1 className="text-3xl font-bold text-gray-800">Project Manager</h1>
+          <span className="text-sm text-gray-500 font-mono break-all pl-4">User ID: {userId || 'Loading...'}</span>
+        </div>
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4" role="alert">
+            <p>{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleAddProject} className="flex items-center space-x-2 mb-6">
+          <input
+            type="text"
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            placeholder="Enter new project name..."
+            className="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={!userId || loading}
+          />
+          <button
+            type="submit"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+            disabled={!userId || loading}
+          >
+            Add Project
+          </button>
+        </form>
+
+        {loading && <p className="text-center text-gray-500">Loading projects...</p>}
+        
+        <ul className="space-y-3">
+          {projects.length > 0 ? (
+            projects.map((project) => (
+              <li
+                key={project.id}
+                className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg shadow-sm"
+              >
+                <span className="text-lg text-gray-700">{project.name}</span>
+                <button
+                  onClick={() => startDeleteProject(project.id)}
+                  className="px-4 py-2 bg-red-500 text-white text-sm rounded-lg shadow-md hover:bg-red-600 transition-colors"
+                  disabled={loading}
+                >
+                  Delete
+                </button>
+              </li>
+            ))
+          ) : (
+            !loading && <p className="text-center text-gray-500">No projects yet. Add one above!</p>
+          )}
+        </ul>
+
+      </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <h3 className="text-lg font-bold mb-2">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-4">Are you sure you want to delete this project? This action cannot be undone.</p>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={cancelDeleteProject}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteProject}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                disabled={loading}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
